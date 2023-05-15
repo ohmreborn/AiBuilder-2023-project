@@ -293,10 +293,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args.data_path)
 
+    if args.data_path.endswith('.jsonl'):
+        raise "please enter path with .jsonl like output.jsonl"
+
     # load_dataset
     url = 'https://drive.google.com/uc?export=download&id=1jbbUtwgwoSQgGnXxzTh-nMReVzEU7ZTU&confirm=t&uuid=d79e2e78-51de-466f-9ceb-3944606141a2&at=AKKF8vwcgi95TGSnSQUNCKx4NTqS:1682865249145'
     gdown.download(url, output='output.jsonl', quiet=False)
 
+    # create training argument on dictionary format
     kwargs = {
         "data_path": args.data_path,
         "wandb_project": args.wandb_project,
@@ -304,4 +308,4 @@ if __name__ == "__main__":
         "wandb_run_name": args.wandb_run_name
     }
 
-    data = train(**kwargs)
+    train(**kwargs)
