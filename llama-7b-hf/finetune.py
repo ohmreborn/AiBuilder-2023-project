@@ -252,8 +252,8 @@ def train(
         load_best_model_at_end=True if val_set_size > 0 else False,
         ddp_find_unused_parameters=False if ddp else None,  # ไม่รู้_
         group_by_length=group_by_length,  # ไม่รู้ _
-        report_to="wandb" if use_wandb else None,  # ไม่รู้_
-        run_name=wandb_run_name if use_wandb else None,  # ไม่รู้_
+        report_to="wandb",  # ไม่รู้_
+        run_name=wandb_run_name,  # ไม่รู้_
     )
 
     trainer = Trainer(
@@ -276,6 +276,32 @@ def train(
 
     model.save_pretrained(output_dir)  # save pretrained มั้ง_ /// yes
 
-    print(
-        "training sucess"
-    )
+    print("training sucess")
+
+
+if __name__ == "__main__":
+    import argparse
+    import gdown
+    from finetune import train, Prompter
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default="output.jsonl")
+    parser.add_argument('--wandb_project', type=str,
+                        default="huggyllama/llama-7b")
+    parser.add_argument('--wandb_log_model', type=str, default="true")
+    parser.add_argument('--wandb_run_name', type=str,
+                        default="finetune_3_epoch")
+    args = parser.parse_args()
+    print(args.data_path)
+
+    # load_dataset
+    url = 'https://drive.google.com/uc?export=download&id=1jbbUtwgwoSQgGnXxzTh-nMReVzEU7ZTU&confirm=t&uuid=d79e2e78-51de-466f-9ceb-3944606141a2&at=AKKF8vwcgi95TGSnSQUNCKx4NTqS:1682865249145'
+    gdown.download(url, output='output.jsonl', quiet=False)
+
+    kwargs = {
+        "data_path": args.data_path,
+        "wandb_project": args.wandb_project,
+        "wandb_log_model": args.wandb_log_model,
+        "wandb_run_name": args.wandb_run_name
+    }
+
+    data = train(**kwargs)
