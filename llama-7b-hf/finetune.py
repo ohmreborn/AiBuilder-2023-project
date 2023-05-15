@@ -110,11 +110,12 @@ def train(
     max_memory = {i: f"{int(mem/1024**3)}GB"for i,
                   mem in enumerate(torch.cuda.mem_get_info())}
     cpu_cores = multiprocessing.cpu_count()
+
     if ddp:  # ไม่รู้__
         device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
         gradient_accumulation_steps = gradient_accumulation_steps // world_size
 
-# _________________________________________________________________________________ไม่รู้ว่าทำงานยังไง
+# _________________________________________________________________________________wandb
     if len(wandb_project) > 0:
         os.environ["WANDB_PROJECT"] = wandb_project
     if len(wandb_log_model) > 0:
@@ -159,7 +160,7 @@ def train(
     model, tokenizer = load_model(base_model=base_model)
     prompter = Prompter()
 
-    def tokenize(prompt, add_eos_token=True):
+    def tokenize(prompt):  # tokenize
         result = tokenizer(
             prompt['prompt'],
             truncation=True,
@@ -178,12 +179,11 @@ def train(
 
         return result
 
-    def generate(data_point):
+    def generate(data_point):  # create_prompt
         full_prompt = prompter.generate_prompt(
             inputs=data_point['Background:'],
             label=f"<human>: {data_point['<human>:']}  \n<bot>:  {data_point['<bot>:']}"
         )
-        # tokenized_full_prompt = tokenize(full_prompt)
         return {'prompt': full_prompt, 'length': len(tokenizer.tokenize(full_prompt))}
 
     # load data
@@ -192,27 +192,28 @@ def train(
     else:
         data = load_dataset(data_path)
 
-    # แบ่ง train-test
+    # แบ่ง train-test แล้วเอา ประโยคที่มีจำนวนคำ ที่ cutoff_len -1 เพราะ ต้องมี <\s> อยู่หน้าประโยค
     if val_set_size > 0:
         train_val = data["train"].train_test_split(
             test_size=val_set_size, shuffle=True, seed=42
         )
         train_data = train_val["train"].shuffle().map(generate)
         train_data = train_data.filter(
-            lambda x: x['length'] <= 254, num_proc=cpu_cores)
+            lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)
         train_data = train_data.map(
             tokenize, batched=False, num_proc=cpu_cores, remove_columns=train_data.column_names)
 
         val_data = train_val["test"].shuffle().map(generate)
         val_data = val_data.filter(
-            lambda x: x['length'] <= 254, num_proc=cpu_cores)
+            lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)
         val_data = val_data.map(
             tokenize, batched=False, num_proc=cpu_cores, remove_columns=train_data.column_names)
     else:
 
-        train_data = data["train"].shuffle().map(generate, num_proc=cpu_cores)
+        train_data = data["train"].shuffle().map(
+            generate, num_proc=cpu_cores)  # genprompt
         train_data = train_data.filter(
-            lambda x: x['length'] <= 254, num_proc=cpu_cores)
+            lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)
         train_data = train_data.map(
             tokenize, batched=False, num_proc=cpu_cores, remove_columns=train_data.column_names)
         val_data = None
@@ -282,30 +283,42 @@ def train(
 if __name__ == "__main__":
     import argparse
     import gdown
-    from finetune import train, Prompter
+
     parser = argparse.ArgumentParser()
+    parser.add_argument('--base_model', type=str,
+                        default="decapoda-research/llama-7b-hf")
     parser.add_argument('--data_path', type=str, default="output.jsonl")
+    parser.add_argument('--output_dir', type=str, default="./lora-alpaca")
+
+    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--micro_batch_size', type=int, default=4)
+    parser.add_argument('--num_epochs', type=int, default=3)
+    parser.add_argument('--cutoff_len', type=int, default=256)
+    parser.add_argument('--val_set_size', type=int, default=0)
+
+    parser.add_argument('--lora_r', type=int, default=8)
+    parser.add_argument('--lora_alpha', type=int, default=16)
+    parser.add_argument('--lora_dropout', type=int, default=0.05)
+    parser.add_argument('-l', '--lora_target_modules',
+                        default=["q_proj",  "v_proj"])
+
     parser.add_argument('--wandb_project', type=str,
                         default="huggyllama/llama-7b")
     parser.add_argument('--wandb_log_model', type=str, default="true")
     parser.add_argument('--wandb_run_name', type=str,
                         default="finetune_3_epoch")
-    args = parser.parse_args()
-    print(args.data_path)
 
-    if args.data_path.endswith('.jsonl'):
-        raise "please enter path with .jsonl like output.jsonl"
+    parser.add_argument('--group_by_length', type=bool, default=False)
+    args = parser.parse_args()
+
+    assert args.data_path.endswith(
+        '.jsonl'), "please enter path with .jsonl like output.jsonl"
 
     # load_dataset
     url = 'https://drive.google.com/uc?export=download&id=1jbbUtwgwoSQgGnXxzTh-nMReVzEU7ZTU&confirm=t&uuid=d79e2e78-51de-466f-9ceb-3944606141a2&at=AKKF8vwcgi95TGSnSQUNCKx4NTqS:1682865249145'
-    gdown.download(url, output='output.jsonl', quiet=False)
+    gdown.download(url, output=args.data_path, quiet=False)
 
     # create training argument on dictionary format
-    kwargs = {
-        "data_path": args.data_path,
-        "wandb_project": args.wandb_project,
-        "wandb_log_model": args.wandb_log_model,
-        "wandb_run_name": args.wandb_run_name
-    }
+    kwargs = vars(args)
 
     train(**kwargs)
