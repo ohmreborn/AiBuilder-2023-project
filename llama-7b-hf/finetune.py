@@ -122,16 +122,12 @@ def train(
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 # _________________________________________________________________________________
 
-  # load model
     def load_model(base_model=base_model):
 
         # load tokenizer
         tokenizer = LlamaTokenizer.from_pretrained(base_model)
         tokenizer.pad_token_id = (0)  # unk. ทำให้ มี token padding คือ UNK
         tokenizer.padding_side = "left"  # Allow batched inference
-        # add new '<human>:' and  '<bot>:' token
-        new_tokens = ['<human>:', '<bot>:']
-        tokenizer.add_tokens(list(new_tokens))
         # load_model
         model = LlamaForCausalLM.from_pretrained(
             base_model,  # decapoda-research/llama-7b-hf
@@ -140,7 +136,6 @@ def train(
             device_map=device_map,  # ไม่รู้_
             max_memory=max_memory
         )
-        model.resize_token_embeddings(len(tokenizer))
 
         # set ค่า requires_grad=False หรือ จะไม่ปรับค่า weight ตอน train
         model = prepare_model_for_int8_training(model)
@@ -315,7 +310,7 @@ if __name__ == "__main__":
         '.jsonl'), "please enter path with .jsonl like output.jsonl"
 
     # load_dataset
-    url = 'https://drive.google.com/uc?export=download&id=1jbbUtwgwoSQgGnXxzTh-nMReVzEU7ZTU&confirm=t&uuid=d79e2e78-51de-466f-9ceb-3944606141a2&at=AKKF8vwcgi95TGSnSQUNCKx4NTqS:1682865249145'
+    url = 'https://drive.google.com/uc?export=download&id=15n6c_-wNszoY9-qOKlI2AA8WeRkLUzh5'
     gdown.download(url, output=args.data_path, quiet=False)
 
     # create training argument on dictionary format
