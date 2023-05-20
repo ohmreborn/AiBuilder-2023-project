@@ -4,10 +4,16 @@ import requests
 import multiprocessing
 from typing import Union, List
 
-from transformers import LlamaForCausalLM, LlamaTokenizer, TrainingArguments, Trainer, DataCollatorForSeq2Seq
+from transformers import (
+    LlamaForCausalLM,
+    LlamaTokenizer,
+    TrainingArguments,
+    Trainer,
+    DataCollatorForSeq2Seq,
+    BitsAndBytesConfig,
+)
 from datasets import load_dataset
 import torch
-
 
 from peft import (
     LoraConfig,
@@ -15,6 +21,7 @@ from peft import (
     PeftModel,
     PeftConfig,
     prepare_model_for_int8_training,
+
 )
 
 
@@ -52,10 +59,10 @@ def train(
     output_dir: str = "./lora-alpaca",  # save model ที่ไหน
     # training hyperparams
     batch_size: int = 128,  # จำปรับค่า weight ทุกๆ batch_size step
-    micro_batch_size: int = 4,  # batch_size
+    micro_batch_size: int = 1,  # batch_size
     num_epochs: int = 3,  # จำนวน epoch
-    learning_rate: float = 3e-4,  # learning-rate
-    cutoff_len: int = 256,  # จำนวนคำที่ยาวที่สุดในประโยคนั้นมั้ง ไม่แน่ใจ_
+    learning_rate: float = 2e-5,  # learning-rate
+    cutoff_len: int = 512,  # จำนวนคำที่ยาวที่สุดในประโยคนั้นมั้ง ไม่แน่ใจ_
     val_set_size: int = 0,  # 2000 # จำนวน ข้อมูลใน validdationset
     # lora hyperparams
     lora_r: int = 8,  # ไม่รู้__
@@ -106,14 +113,9 @@ def train(
     gradient_accumulation_steps = batch_size // micro_batch_size
     device_map = "auto"
     world_size = int(os.environ.get("WORLD_SIZE", 1))  # ไม่รู้__
-    ddp = world_size != 1  # ไม่รู้ แต่ค่าdefault เป็น False_
     max_memory = {i: f"{int(mem/1024**3)}GB"for i,
                   mem in enumerate(torch.cuda.mem_get_info())}
     cpu_cores = multiprocessing.cpu_count()
-
-    if ddp:  # ไม่รู้__
-        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
-        gradient_accumulation_steps = gradient_accumulation_steps // world_size
 
 # _________________________________________________________________________________wandb
     if len(wandb_project) > 0:
@@ -122,6 +124,7 @@ def train(
         os.environ["WANDB_LOG_MODEL"] = wandb_log_model
 # _________________________________________________________________________________
 
+  # load model
     def load_model(base_model=base_model):
 
         # load tokenizer
@@ -129,13 +132,20 @@ def train(
         tokenizer.pad_token_id = (0)  # unk. ทำให้ มี token padding คือ UNK
         tokenizer.padding_side = "left"  # Allow batched inference
         # load_model
+        quantization_config = BitsAndBytesConfig(
+            llm_int8_enable_fp32_cpu_offload=True)
         model = LlamaForCausalLM.from_pretrained(
             base_model,  # decapoda-research/llama-7b-hf
             load_in_8bit=True,  # ไม่รู้_
             torch_dtype=torch.float16,  # ไม่รู้_ /////// Check this out https://moocaholic.medium.com/fp64-fp32-fp16-bfloat16-tf32-and-other-members-of-the-zoo-a1ca7897d407 https://www.quora.com/What-is-the-difference-between-FP16-and-FP32-when-doing-deep-learning
             device_map=device_map,  # ไม่รู้_
-            max_memory=max_memory
+            max_memory=max_memory,
+            quantization_config=quantization_config,
         )
+
+        # needed for single world model parallel
+        model.is_parallelizable = True
+        model.model_parallel = True
 
         # set ค่า requires_grad=False หรือ จะไม่ปรับค่า weight ตอน train
         model = prepare_model_for_int8_training(model)
@@ -149,7 +159,6 @@ def train(
         )
         # ปรับ ค่า weight ในบาง layer ["q_proj","v_proj"]  ให้มีค่า requires_grad=True
         model = get_peft_model(model, config)
-
         return model, tokenizer
 
     model, tokenizer = load_model(base_model=base_model)
@@ -174,7 +183,7 @@ def train(
 
         return result
 
-    def generate(data_point):  # create_prompt
+    def format_prompt(data_point):  # create_prompt
         full_prompt = prompter.generate_prompt(
             inputs=data_point['Background:'],
             label=f"<human>: {data_point['<human>:']}  \n<bot>:  {data_point['<bot>:']}"
@@ -192,13 +201,13 @@ def train(
         train_val = data["train"].train_test_split(
             test_size=val_set_size, shuffle=True, seed=42
         )
-        train_data = train_val["train"].shuffle().map(generate)
+        train_data = train_val["train"].shuffle().map(format_prompt)
         train_data = train_data.filter(
             lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)
         train_data = train_data.map(
             tokenize, batched=False, num_proc=cpu_cores, remove_columns=train_data.column_names)
 
-        val_data = train_val["test"].shuffle().map(generate)
+        val_data = train_val["test"].shuffle().map(format_prompt)
         val_data = val_data.filter(
             lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)
         val_data = val_data.map(
@@ -206,23 +215,15 @@ def train(
     else:
 
         train_data = data["train"].shuffle().map(
-            generate, num_proc=cpu_cores)  # genprompt
+            format_prompt, num_proc=cpu_cores)  # genprompt ให้อยู่ในรูปแบบที่ Ai ต้องการ
         train_data = train_data.filter(
-            lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)
+            lambda x: x['length'] <= cutoff_len-1, num_proc=cpu_cores)  # เอาdata ทีมีจำนวนคำเกิน ออก
         train_data = train_data.map(
             tokenize, batched=False, num_proc=cpu_cores, remove_columns=train_data.column_names)
         val_data = None
-# 27380
 
     # เช็คว่า มีค่า weight กี่ตัวที่ สามารถปรับค่า weight ตอนเทรนมั้ง
     model.print_trainable_parameters()
-
-# ------------------------------------------------------------------------------------
-    if not ddp and torch.cuda.device_count() > 1:
-        # ไม่แน่ใจว่ามันทำอะไร_    /// Train with multiple GPU parameter kubb. Colab has 1, so, let's sad.
-        model.is_parallelizable = True
-        model.model_parallel = True  # ไม่แน่ใจว่ามันทำอะไร_
-# ------------------------------------------------------------------------------------
 
     train_args = TrainingArguments(  # สร้าง class train-args
         per_device_train_batch_size=micro_batch_size,  # btch_size
@@ -246,7 +247,7 @@ def train(
         save_total_limit=3,
         # ไม่รู้_   ///////// Evaluate model if it has validation set.
         load_best_model_at_end=True if val_set_size > 0 else False,
-        ddp_find_unused_parameters=False if ddp else None,  # ไม่รู้_
+        ddp_find_unused_parameters=False,
         group_by_length=group_by_length,  # ไม่รู้ _
         report_to="wandb",  # ไม่รู้_
         run_name=wandb_run_name,  # ไม่รู้_
@@ -277,7 +278,7 @@ def train(
 
 if __name__ == "__main__":
     import argparse
-    import gdown
+#     import gdown
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--base_model', type=str,
@@ -286,19 +287,20 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default="./lora-alpaca")
 
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--micro_batch_size', type=int, default=4)
+    parser.add_argument('--micro_batch_size', type=int, default=1)
     parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--cutoff_len', type=int, default=256)
+    parser.add_argument('--learning_rate', type=float, default=2e-5)
+    parser.add_argument('--cutoff_len', type=int, default=512)
     parser.add_argument('--val_set_size', type=int, default=0)
 
     parser.add_argument('--lora_r', type=int, default=8)
     parser.add_argument('--lora_alpha', type=int, default=16)
-    parser.add_argument('--lora_dropout', type=int, default=0.05)
+    parser.add_argument('--lora_dropout', type=float, default=0.05)
     parser.add_argument('-l', '--lora_target_modules',
                         default=["q_proj",  "v_proj"])
 
     parser.add_argument('--wandb_project', type=str,
-                        default="huggyllama/llama-7b")
+                        default="huggyllama-llama-7b")
     parser.add_argument('--wandb_log_model', type=str, default="true")
     parser.add_argument('--wandb_run_name', type=str,
                         default="finetune_3_epoch")
@@ -310,10 +312,9 @@ if __name__ == "__main__":
         '.jsonl'), "please enter path with .jsonl like output.jsonl"
 
     # load_dataset
-    url = 'https://drive.google.com/uc?export=download&id=15n6c_-wNszoY9-qOKlI2AA8WeRkLUzh5'
-    gdown.download(url, output=args.data_path, quiet=False)
+    # url = 'https://drive.google.com/uc?export=download&id=15n6c_-wNszoY9-qOKlI2AA8WeRkLUzh5'
+    # gdown.download(url, output=args.data_path, quiet=False)
 
     # create training argument on dictionary format
     kwargs = vars(args)
-
     train(**kwargs)
