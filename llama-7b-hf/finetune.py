@@ -278,7 +278,6 @@ def train(
 
 if __name__ == "__main__":
     import argparse
-#     import gdown
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--base_model', type=str,
@@ -288,22 +287,23 @@ if __name__ == "__main__":
 
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--micro_batch_size', type=int, default=1)
-    parser.add_argument('--num_epochs', type=int, default=3)
-    parser.add_argument('--learning_rate', type=float, default=2e-5)
+    parser.add_argument('--num_epochs', type=int, default=2)
+    parser.add_argument('--learning_rate', type=float, default=3e-4)
     parser.add_argument('--cutoff_len', type=int, default=512)
     parser.add_argument('--val_set_size', type=int, default=0)
 
-    parser.add_argument('--lora_r', type=int, default=8)
+    parser.add_argument('--lora_r', type=int, default=16)
     parser.add_argument('--lora_alpha', type=int, default=16)
     parser.add_argument('--lora_dropout', type=float, default=0.05)
     parser.add_argument('-l', '--lora_target_modules',
-                        default=["q_proj",  "v_proj"])
-
+                        default=["q_proj", "k_proj", "v_proj", "o_proj"])
+# ["q_proj", "k_proj", "v_proj", "o_proj"]
+# ["q_proj", "v_proj"]
     parser.add_argument('--wandb_project', type=str,
                         default="huggyllama-llama-7b")
     parser.add_argument('--wandb_log_model', type=str, default="true")
     parser.add_argument('--wandb_run_name', type=str,
-                        default="finetune_3_epoch")
+                        default="finetune_2_epoch")
 
     parser.add_argument('--group_by_length', type=bool, default=False)
     args = parser.parse_args()
@@ -312,8 +312,9 @@ if __name__ == "__main__":
         '.jsonl'), "please enter path with .jsonl like output.jsonl"
 
     # load_dataset
-    # url = 'https://drive.google.com/uc?export=download&id=15n6c_-wNszoY9-qOKlI2AA8WeRkLUzh5'
-    # gdown.download(url, output=args.data_path, quiet=False)
+    import gdown
+    url = "https://drive.google.com/uc?export=download&id=1tIsYn3Mb7rLb8OfXxEv0_cwwEr3AjZUl"
+    gdown.download(url, output=args.data_path, quiet=False)
 
     # create training argument on dictionary format
     kwargs = vars(args)
