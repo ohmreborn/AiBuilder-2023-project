@@ -12,7 +12,7 @@ from transformers import (
     DataCollatorForSeq2Seq,
     BitsAndBytesConfig,
 )
-from datasets import load_dataset
+from datasets import load_dataset, disable_progress_bar
 import torch
 
 from peft import (
@@ -318,4 +318,5 @@ if __name__ == "__main__":
 
     # create training argument on dictionary format
     kwargs = vars(args)
+    disable_progress_bar()
     train(**kwargs)
