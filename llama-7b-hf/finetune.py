@@ -186,7 +186,7 @@ def train(
     def format_prompt(data_point):  # create_prompt
         full_prompt = prompter.generate_prompt(
             inputs=data_point['Background:'],
-            label=f"<human>: {data_point['<human>:']}  \n<bot>:  {data_point['<bot>:']}"
+            label=data_point['<human>:_<bot>:']
         )
         return {'prompt': full_prompt, 'length': len(tokenizer.tokenize(full_prompt))}
 
