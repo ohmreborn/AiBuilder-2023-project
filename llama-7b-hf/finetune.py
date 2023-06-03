@@ -287,9 +287,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--micro_batch_size', type=int, default=1)
-    parser.add_argument('--num_epochs', type=int, default=2)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--learning_rate', type=float, default=3e-4)
-    parser.add_argument('--cutoff_len', type=int, default=512)
+    parser.add_argument('--cutoff_len', type=int, default=256)
     parser.add_argument('--val_set_size', type=int, default=0)
 
     parser.add_argument('--lora_r', type=int, default=16)
@@ -303,7 +303,7 @@ if __name__ == "__main__":
                         default="huggyllama-llama-7b")
     parser.add_argument('--wandb_log_model', type=str, default="true")
     parser.add_argument('--wandb_run_name', type=str,
-                        default="finetune_2_epoch")
+                        default="finetune_10_epoch")
 
     parser.add_argument('--group_by_length', type=bool, default=False)
     args = parser.parse_args()
