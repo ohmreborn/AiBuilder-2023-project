@@ -112,7 +112,6 @@ def train(
     # ปรับค่า weight เมื่อครบ gradient_accumulation_steps iteration ครั้ง
     gradient_accumulation_steps = batch_size // micro_batch_size
     device_map = "auto"
-    world_size = int(os.environ.get("WORLD_SIZE", 1))  # ไม่รู้__
     max_memory = {i: f"{int(mem/1024**3)}GB"for i,
                   mem in enumerate(torch.cuda.mem_get_info())}
     cpu_cores = multiprocessing.cpu_count()
@@ -140,7 +139,7 @@ def train(
             torch_dtype=torch.float16,  # ไม่รู้_ /////// Check this out https://moocaholic.medium.com/fp64-fp32-fp16-bfloat16-tf32-and-other-members-of-the-zoo-a1ca7897d407 https://www.quora.com/What-is-the-difference-between-FP16-and-FP32-when-doing-deep-learning
             device_map=device_map,  # ไม่รู้_
             max_memory=max_memory,
-            quantization_config=quantization_config,
+            # quantization_config=quantization_config,
         )
 
         # needed for single world model parallel
