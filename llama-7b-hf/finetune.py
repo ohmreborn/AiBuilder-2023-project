@@ -111,7 +111,7 @@ def train(
 
     # ปรับค่า weight เมื่อครบ gradient_accumulation_steps iteration ครั้ง
     gradient_accumulation_steps = batch_size // micro_batch_size
-    device_map = "auto"
+    device_map = "balanced" # auto
     max_memory = {i: f"{int(mem/1024**3)}GB"for i,
                   mem in enumerate(torch.cuda.mem_get_info())}
     cpu_cores = multiprocessing.cpu_count()
