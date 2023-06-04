@@ -111,7 +111,7 @@ def train(
 
     # ปรับค่า weight เมื่อครบ gradient_accumulation_steps iteration ครั้ง
     gradient_accumulation_steps = batch_size // micro_batch_size
-    device_map = "balanced" # auto
+    device_map = "auto"
     max_memory = {i: f"{int(mem/1024**3)}GB"for i,
                   mem in enumerate(torch.cuda.mem_get_info())}
     cpu_cores = multiprocessing.cpu_count()
@@ -139,7 +139,7 @@ def train(
             torch_dtype=torch.float16,  # ไม่รู้_ /////// Check this out https://moocaholic.medium.com/fp64-fp32-fp16-bfloat16-tf32-and-other-members-of-the-zoo-a1ca7897d407 https://www.quora.com/What-is-the-difference-between-FP16-and-FP32-when-doing-deep-learning
             device_map=device_map,  # ไม่รู้_
             max_memory=max_memory,
-            # quantization_config=quantization_config,
+            quantization_config=quantization_config,
         )
 
         # needed for single world model parallel
@@ -286,9 +286,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--micro_batch_size', type=int, default=1)
-    parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--num_epochs', type=int, default=3)
     parser.add_argument('--learning_rate', type=float, default=3e-4)
-    parser.add_argument('--cutoff_len', type=int, default=256)
+    parser.add_argument('--cutoff_len', type=int, default=1024)
     parser.add_argument('--val_set_size', type=int, default=0)
 
     parser.add_argument('--lora_r', type=int, default=16)
@@ -302,7 +302,7 @@ if __name__ == "__main__":
                         default="huggyllama-llama-7b")
     parser.add_argument('--wandb_log_model', type=str, default="true")
     parser.add_argument('--wandb_run_name', type=str,
-                        default="finetune_10_epoch")
+                        default="finetune_llama")
 
     parser.add_argument('--group_by_length', type=bool, default=False)
     args = parser.parse_args()
