@@ -296,8 +296,6 @@ if __name__ == "__main__":
     parser.add_argument('--lora_dropout', type=float, default=0.05)
     parser.add_argument('-l', '--lora_target_modules',
                         default=["q_proj", "k_proj", "v_proj", "o_proj"])
-# ["q_proj", "k_proj", "v_proj", "o_proj"]
-# ["q_proj", "v_proj"]
     parser.add_argument('--wandb_project', type=str,
                         default="huggyllama-llama-7b")
     parser.add_argument('--wandb_log_model', type=str, default="true")
@@ -309,11 +307,6 @@ if __name__ == "__main__":
 
     assert args.data_path.endswith(
         '.jsonl'), "please enter path with .jsonl like output.jsonl"
-
-    # load_dataset
-    import gdown
-    url = "https://drive.google.com/uc?export=download&id=1tIsYn3Mb7rLb8OfXxEv0_cwwEr3AjZUl"
-    gdown.download(url, output=args.data_path, quiet=False)
 
     # create training argument on dictionary format
     kwargs = vars(args)
