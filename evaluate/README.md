@@ -31,6 +31,12 @@ https://github.com/ohmreborn/question-generation-AIB2023/blob/main/evaluate/scra
 แล้วก็เอามาบันทึกไว้ใน folder [eval_data](https://github.com/ohmreborn/question-generation-AIB2023/tree/main/evaluate/eval_data)
 โดยจะแบ่งเป็น 9 ชุด ไว้สำหรับเอาไปให้ Ai สร้างคำถามแล้วเอาไปทำแบบฟอร์ม[นี้](https://forms.gle/DJJUKEpYocycoTpC9) สามารถไปทำเพื่อช่วยผู้พัฒนาได้
 โดยหลังจากการสำรวจพบว่า Ai นั้นสร้างคำถามออกมาได้ดีกว่าคำตอบ ดังกราฟ
-![newplot](https://github.com/ohmreborn/conversation-generation-AIB2023/assets/98101484/c71fae78-bb9c-40c9-9705-560d85db0ea2)
 
+กราฟที่ 1 บอกว่ามีคนทำฟอร์มมาให้กี่คน
+
+
+![pie](https://github.com/ohmreborn/conversation-generation-AIB2023/assets/98101484/33eb9bee-0204-42dc-810e-9d43cf0006a3)
+
+กราฟที่ 2 บอกว่า AI นั้น generate ออกมาเป็นอย่างไร
+![newplot](https://github.com/ohmreborn/conversation-generation-AIB2023/assets/98101484/c71fae78-bb9c-40c9-9705-560d85db0ea2)
 
