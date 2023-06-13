@@ -29,7 +29,7 @@ print(data)
 สามารถดูได้ที่ script [นี้]( 
 https://github.com/ohmreborn/question-generation-AIB2023/blob/main/evaluate/scrape_data_wiki.ipynb)
 แล้วก็เอามาบันทึกไว้ใน folder [eval_data](https://github.com/ohmreborn/question-generation-AIB2023/tree/main/evaluate/eval_data)
-โดยจะแบ่งเป็น 9 ชุด ไว้สำหรับเอาไปให้ Ai สร้างคำถามแล้วเอาไปทำแบบฟอร์ม[นี้](https://forms.gle/DJJUKEpYocycoTpC9) สามารถไปทำเพื่อช่วยผู้พัฒนาได้
+ซึ่งมีทั้งหมด 41 ตัวอย่าง โดยจะแบ่งเป็น 9 ชุด ไว้สำหรับเอาไปให้ Ai สร้างคำถามแล้วเอาไปทำแบบฟอร์ม[นี้](https://forms.gle/DJJUKEpYocycoTpC9) สามารถไปทำเพื่อช่วยผู้พัฒนาได้
 โดยหลังจากการสำรวจพบว่า Ai นั้นสร้างคำถามออกมาได้ดีกว่าคำตอบ ดังกราฟ
 
 กราฟที่ 1 บอกว่ามีคนทำฟอร์มมาให้กี่คน
