@@ -8,4 +8,4 @@
 ## Deployment
 [link](https://colab.research.google.com/github/ohmreborn/conversation-generation-AIB2023/blob/main/llama-7b-hf/deployment.ipynb)
 ## Blog
-[link]url
+[link](https://medium.com/@krittiwit0203/สร้างบทสนทนาโดยใช้-ai-b5b7e97b3089)
