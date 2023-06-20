@@ -242,11 +242,9 @@ def train(
         eval_steps=200 if val_set_size > 0 else None,
         save_steps=200,  # ไม่รู้_ ///////////////////// Save model every 200 optimizer.step()
         output_dir=output_dir,  # ไม่รู้_ ////////////////////////// Where to save model
-        # ไม่รู้_ /////////////////////////// Limit model save amount (Not to have 300 model file when you train 300 epoch)
         save_total_limit=3,
         # ไม่รู้_   ///////// Evaluate model if it has validation set.
         load_best_model_at_end=True if val_set_size > 0 else False,
-        ddp_find_unused_parameters=False,
         group_by_length=group_by_length,  # ไม่รู้ _
         report_to="wandb",  # ไม่รู้_
         run_name=wandb_run_name,  # ไม่รู้_
